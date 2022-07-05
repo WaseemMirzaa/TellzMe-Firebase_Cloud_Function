@@ -8,7 +8,6 @@ const Stripe = require("stripe");
 const stripe = Stripe(
   "sk_test_51IK0ryFiEatvCdLGJDpWhMGhMRxRDbhoB9mOFXZpC88Pg6a7JAI1b1kJp1H9PrXQS7yOF8z5xzIx5H6z1m0mvCYM00A85BW07i"
 );
-let connectionToken = stripe.terminal.connectionTokens.create();
 
 app.post("/connection_token", async (req, res) => {
   const token = res.json({ secret: token.secret }); // ... Fetch or create the ConnectionToken
@@ -51,6 +50,43 @@ app.get("/apidata", (req, res) => {
   const date = new Date();
   const hours = (date.getHours() % 12) + 1; // London is UTC + 1hr;
   res.json({ msg: "hello world" });
+});
+
+
+app.post('/create-checkout-session', async (req, res) => {
+
+  if(req.body.price_id != null && req.body.mode != null) {
+  await stripe.checkout.sessions.create({
+    line_items: [
+      {
+        // Provide the exact Price ID (for example, pr_1234) of the product you want to sell
+        price: req.body.price_id,
+        quantity: 1,
+      },
+    ],
+    success_url: 'https://example.com/success',
+   cancel_url : 'https://example.com/cancel' ,
+    mode: req.body.mode,
+  }).then(
+           function(result) {
+            res.json({ msg: "Success", status: "success" , session: result});
+           },
+           function(err) {
+            res.json({ msg: "error", status: "error" , session: err});
+           }
+         );
+
+  
+   
+ } else {
+  if(req.body.price_id == null)
+
+  return { success: false, msg: 'Please provide Price ID' };
+  else 
+  return { success: false, msg: 'Please provide Payment mode' };
+}
+
+  res.redirect(303, session.url);
 });
 app.get("/account", async (req, res) => {
   // const account = await stripe.accounts.create({ type: "express" });
