@@ -9,6 +9,9 @@ const stripe = Stripe(
   "sk_test_51IK0ryFiEatvCdLGJDpWhMGhMRxRDbhoB9mOFXZpC88Pg6a7JAI1b1kJp1H9PrXQS7yOF8z5xzIx5H6z1m0mvCYM00A85BW07i"
 );
 
+const cors = require("cors");
+app.use(cors());
+
 app.post("/connection_token", async (req, res) => {
   const token = res.json({ secret: token.secret }); // ... Fetch or create the ConnectionToken
 });
