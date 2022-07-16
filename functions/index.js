@@ -239,3 +239,98 @@ app.post("/payout", async (req, res) => {
 //   response.send("Hello from Firebase!");
 // });
 exports.app = functions.https.onRequest(app);
+
+
+
+
+
+
+////////////////////EMAIL///////////////////
+
+
+
+"use strict";
+const nodemailer = require("nodemailer");
+
+
+// ==============SMTP EMAIL================
+// email: otp@tellz.me
+// pass: 1$,koR9akvohjx
+// username: p320642p74
+// mail.agenturserver.de
+
+
+  app.post("/sendEmail", async (req, res) => {
+    if (req.body.to == null || req.body.otp == null) {
+      res.json({ msg: "to and otp required", status: "failure" });
+    } else {
+  
+      OTP = req.body.otp;
+      // console.log(OTP);
+   // Generate test SMTP service account from ethereal.email
+  // Only needed if you don't have a real mail account for testing
+  let testAccount = await nodemailer.createTestAccount();
+  // console.log("1");
+
+  // create reusable transporter object using the default SMTP transport
+  let transporter = nodemailer.createTransport({
+    host: "mail.agenturserver.de",
+        // host: "smtp.ethereal.email",
+
+    port: 587,
+    secure: false, // true for 465, false for other ports
+
+    auth: {
+      // user: testAccount.user, // generated ethereal user
+      // pass: testAccount.pass, // generated ethereal password
+      user: "p320642p74", 
+      pass: "1$,koR9akvohjx",
+    },
+  });
+  // console.log("2");
+
+
+
+
+  var emailTemplate = '<div style="font-family: Helvetica,Arial,sans-serif;min-width:1000px;overflow:auto;line-height:2">'
+  +  '<div style="margin:50px auto;width:70%;padding:20px 0">'
+  +  '<div style="border-bottom:1px solid #eee">'
+  +  '<a href="" style="font-size:1.4em;color: #00466a;text-decoration:none;font-weight:600">Tellz.me</a></div>'
+  +  '<p style="font-size:1.1em">Hi,</p>'
+  +  '<p>Thank you for choosing our Brand. Use the following OTP to complete your Retailer Registration procedures.</p>'
+  +  '<h2 style="background: #00466a;margin: 0 auto;width: max-content;padding: 0 10px;color: #fff;border-radius: 4px;">' 
+  +   req.body.otp +'</h2>'
+  +  '<p style="font-size:0.9em;">Regards,<br />Tellz.me</p>'
+  +  '<hr style="border:none;border-top:1px solid #eee" />'
+  +  '<div style="float:right;padding:8px 0;color:#aaa;font-size:0.8em;line-height:1;font-weight:300">'
+  +  '<p>Tellz.me</p>'
+  +  '</div>'
+  +  '</div>'
+  +  '</div>'
+
+
+   // send mail with defined transport object
+   let info = await transporter.sendMail({
+    from: "otp@tellz.me,", // sender address
+    to: req.body.to, // list of receivers
+    subject: "Tellz.me OTP", // Subject line
+    // text: "Hello world?", // plain text body
+
+    html: emailTemplate
+  });
+  
+  // console.log("3");
+
+  // console.log("Message sent: %s", info.messageId);
+  // Message sent: <b658f8ca-6296-ccf4-8306-87d57a0b4321@example.com>
+
+  // Preview only available when sending through an Ethereal account
+  // console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+  // Preview URL: https://ethereal.email/message/WaQKMgKddxQDoou...
+      res.json({ otp: OTP , message: info});
+  }
+  });
+
+  
+  
+
