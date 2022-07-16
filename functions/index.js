@@ -3,11 +3,14 @@ const express = require("express");
 const app = express();
 const admin = require("firebase-admin");
 admin.initializeApp();
+const cors = require('cors')({origin: true});
 
 const Stripe = require("stripe");
 const stripe = Stripe(
   "sk_test_51IK0ryFiEatvCdLGJDpWhMGhMRxRDbhoB9mOFXZpC88Pg6a7JAI1b1kJp1H9PrXQS7yOF8z5xzIx5H6z1m0mvCYM00A85BW07i"
 );
+
+app.use(cors);
 
 app.post("/connection_token", async (req, res) => {
   const token = res.json({ secret: token.secret }); // ... Fetch or create the ConnectionToken
@@ -53,20 +56,20 @@ app.get("/apidata", (req, res) => {
 });
 
 
-app.post('/create-checkout-session', async (req, res) => {
+app.get('/create-checkout-session', async (req, res) => {
 
-  if(req.body.price_id != null && req.body.mode != null) {
+  if(req.query.price_id != null && req.query.mode != null) {
   await stripe.checkout.sessions.create({
     line_items: [
       {
         // Provide the exact Price ID (for example, pr_1234) of the product you want to sell
-        price: req.body.price_id,
+        price: req.query.price_id,
         quantity: 1,
       },
     ],
     success_url: 'https://example.com/success',
    cancel_url : 'https://example.com/cancel' ,
-    mode: req.body.mode,
+    mode: req.query.mode,
   }).then(
            function(result) {
             res.json({ msg: "Success", status: "success" , session: result});
@@ -79,7 +82,7 @@ app.post('/create-checkout-session', async (req, res) => {
   
    
  } else {
-  if(req.body.price_id == null)
+  if(req.query.price_id == null)
 
   return { success: false, msg: 'Please provide Price ID' };
   else 
@@ -102,7 +105,7 @@ app.get("/account", async (req, res) => {
       },
       business_type: 'individual',
       
-      business_profile:{product_description: 'Renovision will use this account url to transfer payments into the Contractor account. Contractor will be providing services to the clients and will get paid using stripe.'} ,
+      business_profile:{product_description: 'Tellzme will use this account url to transfer payments into the Contractor account. Contractor will be providing services to the clients and will get paid using stripe.'} ,
     });
 
    
