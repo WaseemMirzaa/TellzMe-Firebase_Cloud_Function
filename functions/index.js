@@ -2,7 +2,12 @@ const functions = require("firebase-functions");
 const express = require("express");
 const app = express();
 const admin = require("firebase-admin");
+const uuid = require('uuid');
 admin.initializeApp();
+
+const uAmount = 20;
+const isRedeemedFlag = false;
+const isApplicableFlag = false;
 
 const Stripe = require("stripe");
 const stripe = Stripe(
@@ -48,6 +53,7 @@ app.post("/ephemeralKey", async (req, res) => {
     }
   }
 });
+
 
 app.get("/apidata", (req, res) => {
   const date = new Date();
@@ -197,6 +203,9 @@ app.post("/createPaymentIntent", async (req, res) => {
   }
 });
 
+
+
+
 app.post("/refund", async (req, res) => {
   if (req.body.amount == null || req.body.payment_intent == null) {
     res.json({ msg: "Amount and Payment Intent Required", status: "failure" });
@@ -227,6 +236,58 @@ app.post("/payout", async (req, res) => {
 }
 });
 
+// CALL BACK FUNCTIONS
+
+// app.post("/callfunction", async (req, res) => {
+  
+//   this.senddevices();
+//     res.json({ data: "called function" });
+
+// });
+
+//Triggered when user is created
+exports.referralUserCreated = functions.firestore
+    .document("user/{documentId}")
+    .onCreate( ( snap, context) => {
+      const refCode = snap.get("referralCode");
+      const creAt = snap.get("createdAt");
+      const userId = snap.get("uid");
+     
+      const data = {
+        referralCode : refCode,
+        createdAt : creAt,
+        amount : uAmount,
+        isApplicable : isApplicableFlag,
+        isRedeemed : isRedeemedFlag
+
+      };
+      return admin.firestore()
+          .collection("userReferences")
+          .doc(userId)
+          .set(data)
+          .then((d) => {
+            console.log("userPrefrencesSucessfully" + d);
+          });
+    });
+
+//Triggered when adminPayment is created 
+exports.paymentListner = functions.firestore
+    .document("adminPayments/{documentId}")
+    .onCreate( (snap, context) => {
+      const uId = snap.get("userId");
+      const timeStamp = snap.get("createdAt");
+      const data = {
+        isApplicable : true,
+        applicableFrom :timeStamp
+      };
+      return admin.firestore()
+          .collection("userReferences")
+          .doc(uId)
+          .update(data)
+          .then((d) => {
+            console.log("Operation Successful" + d);
+          });
+    });
 
 
 
