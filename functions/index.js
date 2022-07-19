@@ -272,7 +272,7 @@ exports.referralUserCreated = functions.firestore
 
 //Triggered when adminPayment is created 
 exports.paymentListner = functions.firestore
-    .document("adminPayments/{documentId}")
+    .document("purchases/{documentId}")
     .onCreate( (snap, context) => {
       const uId = snap.get("userId");
       const timeStamp = snap.get("createdAt");
