@@ -3,6 +3,9 @@ const express = require("express");
 const app = express();
 const admin = require("firebase-admin");
 const uuid = require('uuid');
+const cors = require("cors");
+app.use(cors());
+const axios = require('axios');
 admin.initializeApp();
 
 const uAmount = 20;
@@ -14,9 +17,33 @@ const stripe = Stripe(
   "sk_test_51IK0ryFiEatvCdLGJDpWhMGhMRxRDbhoB9mOFXZpC88Pg6a7JAI1b1kJp1H9PrXQS7yOF8z5xzIx5H6z1m0mvCYM00A85BW07i"
 );
 
-const cors = require("cors");
-app.use(cors());
 
+
+
+
+exports.sendToMake = functions.auth.user().onCreate((user) => {
+    axios.post('https://hook.eu1.make.com/yza02s49p7ferlkfihqg4b8n5en607nu', {
+        email: user.email,
+        uid: user.uid,
+      })
+      .then(function (response) {
+        console.log(response);
+      })
+      .catch(function (error) {
+        console.log(error);
+      });
+  });
+
+//Sample
+  app.get("/apidata", (req, res) => {
+    const date = new Date();
+    const hours = (date.getHours() % 12) + 1; // London is UTC + 1hr;
+    res.json({ msg: "hello world" });
+  });
+
+  
+
+  //////////////////////////Stripe For Mobile///////////////////////////////
 app.post("/connection_token", async (req, res) => {
   const token = res.json({ secret: token.secret }); // ... Fetch or create the ConnectionToken
 });
@@ -52,13 +79,6 @@ app.post("/ephemeralKey", async (req, res) => {
       res.json({ msg: "Unable to create emhemeral key.", status: "failure" });
     }
   }
-});
-
-
-app.get("/apidata", (req, res) => {
-  const date = new Date();
-  const hours = (date.getHours() % 12) + 1; // London is UTC + 1hr;
-  res.json({ msg: "hello world" });
 });
 
 
@@ -128,6 +148,58 @@ app.get("/account", async (req, res) => {
 
 });
 
+app.post("/createPaymentIntent", async (req, res) => {
+  if (req.body.amount == null || req.body.customer_id == null) {
+    res.json({ msg: "Amount Required", status: "failure" });
+  } else {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: req.body.amount,
+      currency: "usd",
+    });
+    const clientSecret = paymentIntent.client_secret;
+
+    const data = { paymentIntent: paymentIntent, clientSecret: clientSecret };
+
+    res.json({ data: data });
+  }
+});
+
+
+
+
+app.post("/refund", async (req, res) => {
+  if (req.body.amount == null || req.body.payment_intent == null) {
+    res.json({ msg: "Amount and Payment Intent Required", status: "failure" });
+  } else {
+
+    const refund = await stripe.refunds.create({
+      payment_intent: eq.body.payment_intent,
+      amount: req.body.amount,
+    });
+
+    res.json({ data: refund });
+  }
+});
+
+app.post("/payout", async (req, res) => {
+  if (req.body.amount == null || req.body.stripe_account_id == null) {
+    res.json({ msg: "Amount and Stripe Account ID Required", status: "failure" });
+  } else {
+
+    const payout = await stripe.payouts.create({
+      amount: req.body.amount,
+      currency: 'usd',
+    }, {
+      stripeAccount: req.body.stripe_account_id,
+    });
+
+    res.json({ data: payout });
+  }
+});
+
+////////////////////////////////////STRIPE [END]///////////////////////////////
+
+
 app.post("/sendFCM", async (req, res) => {
   var isSuccess = false;
   if (
@@ -187,55 +259,6 @@ app.post("/sendFCM", async (req, res) => {
   }
   return { success: true };
 });
-app.post("/createPaymentIntent", async (req, res) => {
-  if (req.body.amount == null || req.body.customer_id == null) {
-    res.json({ msg: "Amount Required", status: "failure" });
-  } else {
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: req.body.amount,
-      currency: "usd",
-    });
-    const clientSecret = paymentIntent.client_secret;
-
-    const data = { paymentIntent: paymentIntent, clientSecret: clientSecret };
-
-    res.json({ data: data });
-  }
-});
-
-
-
-
-app.post("/refund", async (req, res) => {
-  if (req.body.amount == null || req.body.payment_intent == null) {
-    res.json({ msg: "Amount and Payment Intent Required", status: "failure" });
-  } else {
-
-    const refund = await stripe.refunds.create({
-      payment_intent: eq.body.payment_intent,
-      amount: req.body.amount,
-    });
-
-    res.json({ data: refund });
-  }
-});
-
-app.post("/payout", async (req, res) => {
-  if (req.body.amount == null || req.body.stripe_account_id == null) {
-    res.json({ msg: "Amount and Stripe Account ID Required", status: "failure" });
-  } else {
-
-    const payout = await stripe.payouts.create({
-      amount: req.body.amount,
-      currency: 'usd',
-    }, {
-      stripeAccount: req.body.stripe_account_id,
-    });
-
-    res.json({ data: payout });
-  }
-});
-
 
 app.post("/createBrandAmbassador", async (req, res) => {
   if (req.body.regNumber == null
