@@ -1,3 +1,6 @@
+//Useful Firebase commands
+//firebase deploy --only functions
+
 const functions = require("firebase-functions");
 const express = require("express");
 const app = express();
@@ -459,16 +462,31 @@ exports.app = functions.https.onRequest(app);
 
 
 ////////////////////EMAIL///////////////////
+// Incoming Mail (IMAP) Server
+// imap.gmail.com
+// Requires SSL: Yes
+// Port: 993
+// Outgoing Mail (SMTP) Server
+// smtp.gmail.com
+// Requires SSL: Yes
+// Requires TLS: Yes (if available)
+// Requires Authentication: Yes
+// Port for SSL: 465
+// Port for TLS/STARTTLS: 587
+// Full Name or Display Name: tellz.me® PAGE
+// Account Name, User name, or Email address: otp@qr-code.page
+// Password: j6NH1rvA&bYpLKdCL#W&4i06X
+// App Pass: "ommevmwxmkpsibqc"
 
+var adminEmailAddress = "retailer@qr-code.page";
+var companyEmail_OTP = "otp@qr-code.page";
+var companyEmail_Info = "info@qr-code.page";
 
-var adminEmailAddress = "sibghat.developlogix@gmail.com";
-var companyEmail = "otp@tellz.me";
-
-var host = "mail.agenturserver.de";
+var host = "smtp.gmail.com";
 var port = 587;
 var secure = false;
-var user = "p320642p74";
-var pass = "1$,koR9akvohjx";
+var user = "otp@qr-code.page";
+var pass = "ommevmwxmkpsibqc";
 
 "use strict";
 const nodemailer = require("nodemailer");
@@ -544,7 +562,7 @@ app.post("/sendEmail", async (req, res) => {
 
     // send mail with defined transport object
     let info = await transporter.sendMail({
-      from: companyEmail, // sender address
+      from: companyEmail_OTP, // sender address
       to: req.body.to, // list of receivers
       subject: "Tellz.me OTP", // Subject line
       // text: "Hello world?", // plain text body
@@ -581,7 +599,7 @@ function sendWholesalerQualifiedEmail(wholesalerEmail, callback) {
   intializeMailServeice();
   // send mail with defined transport object
   transporter.sendMail({
-    from: companyEmail, // sender address
+    from: companyEmail_Info, // sender address
     to: wholesalerEmail, // list of receivers
     subject: "Congradulation!", // Subject line
     text: "Congradulations, You have qualified for the Wholesaler status. Now please wait till company member contacts you.", // plain text body
@@ -590,7 +608,7 @@ function sendWholesalerQualifiedEmail(wholesalerEmail, callback) {
   });
 
   transporter.sendMail({
-    from: companyEmail, // sender address
+    from: companyEmail_Info, // sender address
     to: adminEmailAddress, // list of receivers
     subject: "Alert!", // Subject line
     text: "A new retailer has qualified for the Wholesaler " + wholesalerEmail, // plain text body
