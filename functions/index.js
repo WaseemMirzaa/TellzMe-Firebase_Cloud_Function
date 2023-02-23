@@ -14,7 +14,7 @@ const isApplicableFlag = false;
 
 const Stripe = require("stripe");
 const stripe = Stripe(
-  "sk_test_51IK0ryFiEatvCdLGJDpWhMGhMRxRDbhoB9mOFXZpC88Pg6a7JAI1b1kJp1H9PrXQS7yOF8z5xzIx5H6z1m0mvCYM00A85BW07i"
+  "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"
 );
 
 const cors = require("cors");
@@ -546,15 +546,20 @@ app.post("/sendEmail", async (req, res) => {
     var emailTemplate = '<div style="font-family: Helvetica,Arial,sans-serif;min-width:1000px;overflow:auto;line-height:2">'
       + '<div style="margin:50px auto;width:70%;padding:20px 0">'
       + '<div style="border-bottom:1px solid #eee">'
-      + '<a href="" style="font-size:1.4em;color: #00466a;text-decoration:none;font-weight:600">Tellz.me</a></div>'
+      + '<a href="" style="font-size:1.4em;color: #00466a;text-decoration:none;font-weight:600">tellz.me® PAGE</a></div>'
       + '<p style="font-size:1.1em">Hi,</p>'
       + '<p>Thank you for choosing our Brand. Use the following OTP to complete your Retailer Registration procedures.</p>'
       + '<h2 style="background: #00466a;margin: 0 auto;width: max-content;padding: 0 10px;color: #fff;border-radius: 4px;">'
       + req.body.otp + '</h2>'
-      + '<p style="font-size:0.9em;">Regards,<br />Tellz.me</p>'
+      + '<p style="font-size:0.9em;">Regards,<br />tellz.me® PAGE</p>'
       + '<hr style="border:none;border-top:1px solid #eee" />'
       + '<div style="float:right;padding:8px 0;color:#aaa;font-size:0.8em;line-height:1;font-weight:300">'
-      + '<p>Tellz.me</p>'
+      + '<p>tellz.me® International GmbH</p>'
+      + '<p>High street 19</p>'
+      + '<p>27374 Visselhövede</p>'
+      + '<p>Managing director: Timo Bösch</p>'
+      + '<p>Seat of the company: Visselhövede</p>'
+      + '<p>Local court Walsrode, HRB 206853</p>'
       + '</div>'
       + '</div>'
       + '</div>'
@@ -564,7 +569,7 @@ app.post("/sendEmail", async (req, res) => {
     let info = await transporter.sendMail({
       from: companyEmail_OTP, // sender address
       to: req.body.to, // list of receivers
-      subject: "Tellz.me OTP", // Subject line
+      subject: "tellz.me® PAGE OTP", // Subject line
       // text: "Hello world?", // plain text body
 
       html: emailTemplate
