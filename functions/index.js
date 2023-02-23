@@ -1,3 +1,4 @@
+
 //Useful Firebase commands
 //firebase deploy --only functions
 
@@ -19,6 +20,14 @@ const stripe = Stripe(
 
 const cors = require("cors");
 app.use(cors());
+
+
+
+
+
+
+
+
 
 app.post("/connection_token", async (req, res) => {
   const token = res.json({ secret: token.secret }); // ... Fetch or create the ConnectionToken
@@ -157,7 +166,7 @@ app.post("/sendFCM", async (req, res) => {
             body: req.body.msg,
           },
           data: {
-            body: req.body.msg,
+            link: req.body.data,
           },
         };
 
@@ -407,7 +416,425 @@ exports.retailerUpdated = functions.firestore
     // perform desired operations ..
   });
 
+// Trigger every minute
+exports.triggerAfterEveryOneMinute = functions.pubsub.schedule('*/5 * * * *').onRun((context)=>{
 
+  sendEmailAfterThreeDays();
+  deleteUnVerifiedUsersAfterSevenDays();
+  
+  
+  admin.firestore().collection("scheduleNotifications")
+  .where("scheduleAt", "<=", Date.now())
+  .get().then((snapshot) => {
+
+    snapshot.forEach(doc => {
+      if(doc.exists){
+        const data = doc.data();
+        console.log(doc.id, '<=', doc.data());
+
+        const url = 'https://qr-code.page?type=newsfeed&newsfeed-id='+data.newsFeedId;
+        
+        data.to.forEach((element) => {
+          if (element != "") {
+            const payload = {
+              token: element,
+              notification: {
+                title: data.title,
+                body: data.body,
+              },
+              data: {
+                link: url,
+              },
+            };
+    
+            admin
+              .messaging()
+              .send(payload)
+              .then((response) => {
+                // Response is a message ID string.
+                console.log("Successfully sent message:", response);
+                // return { success: true };
+              })
+              .catch(function (error) {
+                console.log("Notification sent failed:", error);
+              });
+          } 
+        });
+        
+        admin.firestore()
+                    .collection("newsfeed")
+                    .doc(data.newsFeedId)
+                    .collection("news")
+                    .doc(data.newsId)
+                    .update({isSetTriggerDate: false,
+                      isSent: true});
+        admin.firestore().collection("scheduleNotifications").doc(doc.id).delete();              
+
+      }
+    });
+  });
+
+  console.log("Hello im printing after every 1 minute");
+  return null;
+});
+
+
+function sendEmailAfterThreeDays() {
+
+  admin.firestore().collection("newlyCreatedUsers")
+  .where("resendVerificationEmailDate", "<=", Date.now())
+  .get().then((snapshot) => {
+    
+    
+    snapshot.forEach(async (element) => {
+      const data = element.data();
+
+    OTP = data.otp;
+    let testAccount = await nodemailer.createTestAccount();
+
+    var emailTemplate = '<html xmlns="http://www.w3.org/1999/xhtml">'
+    +'<head>'
+    +'<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />'
+    +'<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">'
+    +'<title>Many thanks for your registration</title>'
+    +'<style type="text/css">'
+    
+    +'@font-face {'
+    +'font-family: \'Icons Technology Template\';'
+    +'src: url(\'https://assets.website-files.com/635006df15081fdeda1bbe4f/635006df15081f62be1bbeed_icons-technology-template.woff2\')format(\'woff2\');'
+    +'font-weight: 400;'
+    +'font-style: normal;'
+    +'font-display: swap;'
+    +'}'
+    +'@font-face {'
+    +'font-family: \'Plus Jakarta Display\';'
+    +'src: url(\'https://assets.website-files.com/635006df15081fdeda1bbe4f/635006df15081f3e891bbeb1_PlusJakartaDisplay-Medium.otf\') format(\'opentype\');'
+    +'font-weight: 500;'
+    +'font-style: normal;'
+    +'font-display: swap;'
+    +'}'
+    +'@font-face {'
+    +'font-family: \'Plus Jakarta Display\';'
+    +'src: url(\'https://assets.website-files.com/635006df15081fdeda1bbe4f/635006df15081f50301bbecf_PlusJakartaDisplay-Regular.otf\') format(\'opentype\');'
+    +'font-weight: 400;'
+    +'font-style: normal;'
+    +'font-display: swap;'
+    +'}'
+    
+    
+    +'.preheader { display:none !important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; }'
+    +'.column {padding-bottom: 20px;}'
+    
+    +'@font-face {'
+    +'font-family: \'Open Sans\', Arial, Helvetica, sans-serif;'
+    +'font-style: normal;'
+    +'font-weight: 400;'
+    +'}'
+    
+    +'img {display:block;}'
+    
+    +'p,td, ul, li{'
+    +'font-family: \'Open Sans\', Arial, Helvetica, sans-serif;'
+    +'color:#00000; line-height: 1.3em; font-size:1.0em;  }'
+    
+    +'p.subtitle{'
+    +'font-family: \'Open Sans\', Arial, Helvetica, sans-serif;'
+    +'color:#a0a0a0; line-height: 1.15em; font-size:1.0em;  }'
+    
+    +'p.impressum{'
+    +'font-family: \'Open Sans\', Arial, Helvetica, sans-serif;'
+    +'color:#a0a0a0; font-weight:300; line-height: 1.2em; font-size:0.8em;  }'
+    
+    +'a{'
+    +'font-family: \'Open Sans\', Arial, Helvetica, sans-serif; font-weight:normal;   font-size:1em;   margin-top:20px; text-decoration:underline; color:#0144e4;}'
+    
+    +'a.weiterlesen{font-family: \'Open Sans\', Arial, Helvetica, sans-serif;    font-size:1.05em;     font-weight:bold;     text-decoration:underline;    color:#0144e4;   }'
+    
+    +'a.headline{font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  font-weight:bold;   line-height:1.2em;  text-decoration:none;  color:#0144e4;  font-size: 1.2em;  padding-bottom:1em; }'
+    
+    +'h1{  font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  font-weight:bold;   line-height:1.2em;  text-align:middle;  color:#000000;   font-size: 1.4em;}'
+    
+    +'h2{  font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  font-weight:bold;   font-size: 1.3em;  line-height:1.2em;  text-align:middle;  color:#0144e4;  }'
+    
+    +'h3{  font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  font-weight:bold;   line-height:1.3em;  text-align:middle;  color:#0144e4;   font-size: 1.3em;}'
+    
+    +'hr {border-top: 1px;color: #e7e7e7;}'
+    
+    +'tr.grey{background-color: #f2f2f2;border: 1px;border-color: #000000; }'
+    
+    +'a.link {  font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  font-size: 0.9em;   font-weight: normal;  color:#0144e4;  line-height: 1.1;   text-decoration: none;   }'
+    
+    
+    +'a.link:hover { text-decoration: underline;   }'
+    
+    
+    +'a.button-a {  font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  background: #0144e4;   border: 15px solid #0144e4;   font-size: 1em;   font-weight: bold;  color:#FFFFFF;  line-height: 1.1;   text-align: center;   text-decoration: none;   display: block; border-radius: 3px;  }'
+    
+    
+    +'a.button-a:hover {  font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  font-size: 1em;   font-weight: bold;  color:#0144e4;   background: #2E9AFE !important;  border-color: #2E9AFE !important;  }'
+    
+    +'a.button-b {  font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  background: #cccccc;   border: 15px solid #cccccc;   font-size: 1em;   font-weight: bold;  color:#FFFFFF;  line-height: 0.9;   text-align: center;   text-decoration: none;   display: block; border-radius: 3px; }'
+    
+    
+    +'a.button-b:hover {  font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  font-family:arial,verdana,helvetica;  font-size: 0.95em;   font-weight: bold;  color:#FFFFFF;     background: #999999 !important; border-color: #999999 !important;}'
+      
+    +'@media only screen and (max-width: 640px) {'
+    +'.deviceWidth {'
+    +'padding: 0;'
+    +' }'
+
+    +'.center {text-align: center!important;width: 100%;}'
+    +'}'
+    
+    +'@media only screen and (max-width: 479px) {'
+    +'.deviceWidth {'
+    +'width: 280px!important;'
+    +'padding: 0;'
+    +'}'
+    +'}'
+    
+        +'</style>'
+        +'</head>'
+        +'<body style="margin-top:10px;" bgcolor="#F8F8F8" leftmargin="0" topmargin="100px" marginwidth="0" marginheight="0">'
+        +'<span class="preheader" style="display: none !important; visibility: hidden; opacity: 0; color: transparent; height: 0; width: 0;"> '
+        +'Please confirm your identity</span>'
+        +'<table style="width: 100%;" cellspacing="0" cellpadding="0" border="0" bgcolor="#F8F8F8">'
+        +'<tbody>'
+        +'<tr>'
+        +'<td align="center">'
+    
+        +'<table class="deviceWidth" style="width: 600px;" cellspacing="0" cellpadding="0" border="0" bgcolor="#F8F8F8">'
+        +' <tbody>'
+        +'<tr>'
+        +'<td colspan="2">'
+        +'<table style="width: 100%;">'
+        +'<tbody>'
+        +'<tr>'
+        +'<td height="20px" colspan="4">'
+        +'&nbsp;'
+        +'</td>'
+        +'</tr>'
+    
+        +'<tr>'
+        +'<td style="Padding-left:5px; padding-right:20px;" width="100px" align="left">'
+        +'<a href="https://www.tellz.me" target="_blank">'
+        +'<img class="deviceWidth " style="width: 100px!important;"'
+        +'src="https://firebasestorage.googleapis.com/v0/b/tmpage-4a311.appspot.com/o/1-user_documents%2Fezgif.com-gif-maker.png?alt=media&token=d399ee57-f417-4e76-b3cb-ee30bb8b301b"/>'
+        +'</a>'			
+        +'</td>'
+        +'<td width="450px" colspan="3">'
+        +'</td>'
+                  
+        +'</tr>'
+
+        +'<tr>'
+        +'<td height="40px" colspan="4">'
+        +'&nbsp;'
+        +'</td>'
+        +'</tr>'
+ 
+        +'<tr>'
+        +'<td colspan="2"style="padding-left: 20px; padding-right: 20px;background: #F8F8F8F8;" width="300px">'
+        +'<a href="https://www.tellz.me" target="_blank">' 
+                    
+        +'<img class="deviceWidth " style="width: 180px!important;"' 
+        +'src="https://firebasestorage.googleapis.com/v0/b/tmpage-4a311.appspot.com/o/1-user_documents%2Fezgif.com-gif-maker%20(1).png?alt=media&token=b762fe43-fbce-481b-9157-b81c734d3718 alt="tellz.me® International GmbH" border="0" />'
+    
+        +'</a> <br />'
+        +'</td>'
+        +'<td style="padding-left: 20px; padding-right: 20px;" colspan="2"width="150px"align="right">'
+        +'<a class="link" href="https://www.tellz.me" target="_blank">' 
+        +'<b>EN<br />USER<br />MAIL'
+        +'</b>'
+        +'</a>'
+        +'</td>'
+                  
+                  
+        +'</tr>'
+
+        +'<tr>'
+        +'<td height="20px" colspan="4">'
+        +'&nbsp;'
+        +'</td>'
+        +'</tr>'
+    
+        +'<tr>'
+        +'<td colspan="4" style="padding-left: 20px; padding-right: 20px;">'
+        +'<h1>'
+        +'<br />'
+        +'Please confirm your account'
+        +'</h1>'
+                    
+        +'<p class="subtitle">'
+        +'We connect the world: online meets offline.'
+        +'</p>'
+        +'</td>'
+        +'<td>'
+        +'&nbsp;'
+        +'</td>'
+        +'</tr>'
+        +'<tr>'
+        +'<td colspan="4">'
+        +'<hr />'
+        +'</td>'
+        +'</tr>'
+    
+        +'</tbody>'
+        +'</table>'
+        +'</td>'
+        +'</tr>'
+    
+        +'<tr>'
+        +'<td colspan="2" style="padding: 20px;">'
+        +'<table class="deviceWidth" style="width: 100%;" cellspacing="0" cellpadding="0" border="0" align="left">'
+        +'<tbody>'
+        +'<tr>'
+        +'<td>'
+              
+        +'<p>Hello '+data.name+','
+        +'<br /><br />'
+        +'Nice that you have chosen tellz.me&#174;. <br /><br />'
+        +'<b>How to confirm your account:</b><br />'
+        +'Please open the app on your mobile phone now and enter these four digits on the start page: '
+        +'</p>'
+                  
+        +'<h2 class="center">' 
+        + data.otp +'</h2>'
+                  
+        +'<p> If you do not confirm the account, it will be automatically deleted in<br />7 days.'
+        +'<br /><br /><a href="https://intercom.help/tellzme/de/" target="_blank">Find out here</a> what the app does and how to use it.'
+                     
+        +'<br /><br />'
+        +'If you have not yet downloaded the app to your phone, use these links or go to the Apple Store or Google Play and enter "tellz.me PAGE" in the search.	<table>'
+        +'<br /><br />'
+        +'<tr>'
+        +'<td>'
+                  
+        +'<a href="https://play.google.com/store/apps/details?id=com.app.tmpage" target="_blank"> '
+        +'<img class="deviceWidth " style="width: 100%!important;" src="https://www.der-business-tipp.de/kampagnen/tellzme/google-app-store-icon-white.png" alt="GooglePlay Download" border="0" />'
+        +'</a><br />'
+        +'<a href="https://play.google.com/store/apps/details?id=com.app.tmpage" target="_blank">Download Android</a>'
+        +'</td>'
+        +'<td align="left">'
+        +'<a href="https://apps.apple.com/de/app/tellz-me-page/id1622993070" target="_blank">' 
+        +'<img class="deviceWidth " style="width: 100%!important;" src="https://www.der-business-tipp.de/kampagnen/tellzme/apple-app-store-icon-white.png" alt="AppleStore Download" border="0" />'
+        +'</a><br />'
+        +'<a href="https://apps.apple.com/de/app/tellz-me-page/id1622993070" target="_blank">Download IOS</a>' 
+                          
+        +'</td>'
+        +'</tr>'
+        +'</table><br /><br />'	
+        +'<table>'
+        +'<tr>'
+        +'<td width="350px">'
+        +' If you have any questions or suggestions for us,'
+        +'please feel free to send us an email.<br />'
+        +' </td>'
+        +'<td width="210px">'
+        +'<a href="https://www.tellz.me" target="_blank">' 
+        +'<img class="deviceWidth " style="width:190px!important;"' 
+        +'src="https://firebasestorage.googleapis.com/v0/b/tmpage-4a311.appspot.com/o/1-user_documents%2Fezgif.com-gif-maker%20(2).png?alt=media&token=978a6acd-0021-4e6e-942e-eaad08834fb2"' 
+        +'alt="Watch the video" border="0" />'
+        +'</a>'
+        +'</td>'
+        +'</tr>'
+        +'<tr>'
+        +'<td width="350px">'
+        +'<br />'
+        +'<br /><br />'
+        +'We hope you enjoy the app.<br /><br />'
+        +'Kind regards,<br />'
+        +'Your tellz.me&#174; service team <br />'
+        +'Email: <a href="mailto:support@tellz.me" target="_blank">support@tellz.me</a>'
+        +' </td>'
+        +' <td>'
+                    
+        +'<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="margin: auto">'
+        +'<tr>'
+        +'<td style="border-radius: 3px; background: #F8F8F8; text-align: center;" class="button-td">'
+        +'<a href="https://qr-code.page/" target="_blank" class="button-a">'
+        +'>>> Log in now &nbsp;&nbsp;'
+        +'</a>'
+        +'</td>'
+        +'</tr>'
+        +'</table>'
+        +'<br />'
+                    
+        +'</td>'
+        +'</tr>'
+        +'</table>'	                   
+        +'</p>'
+        +'</td>'
+        +'</tr>'
+        +'</tbody>'
+        +'</table>'
+        +'</td>'
+        +'</tr>'
+        +'<tr>'
+        +'<td style="Padding-left:20px; padding-right:20px;">'
+        +'<a href="https://tellz.me" target="_blank">'
+        +'<img class="deviceWidth " style="width: 100%!important;"' 
+        +'src="https://firebasestorage.googleapis.com/v0/b/tmpage-4a311.appspot.com/o/emailsystem%2F6373c1bbee36d363ad68493c_admin_de-p-3200%201.png?alt=media&token=17b3aa29-8e0a-4988-85b2-a066056e0c98" />'
+        +'</a>'			
+        +'</td>'
+        +'</tr>'   
+        +'<tr>'
+        +'<td colspan="2" style="padding: 20px;">'
+        +'<p class="impressum">'
+        +'© tellz.me® International GmbH, Hohe Strasse 19, 27374 Visselhövede, Germany,' 
+        +'VAT no. DE313991621, Trade register no. HRB 206853, Local court Walsrode, CEO:Timo Bösch,' 
+        +'Email:hello@tellz.me'
+        +'<br /><br />'
+        +'This message was sent to ##emfängeremail## and is intended for ##name##. tellz.me® sends you updates like this to let you know about' 
+        +'the latest posts on tellz.me®. You can unsubscribe from updates or remove your email' 
+        +'address if this is not your tellz.me® account. ##Unsubscribe here##.'
+        +'</p>'	
+        +'</td>'
+        +'</tr>'
+                  
+        +'</tbody>'
+        +'</table>'
+        +'</body>'
+        +'</html>'
+
+
+    intializeMailServeice();
+
+    // send mail with defined transport object
+    let info = await transporter.sendMail({
+      from: companyEmail_OTP, // sender address
+      to: data.email, // list of receivers
+      subject: "tellz.me® PAGE OTP", // Subject line
+      // text: "Hello world?", // plain text body
+
+      html: emailTemplate
+    });
+    res.json({ otp: OTP, message: info });
+
+    });
+  });
+}
+
+
+function deleteUnVerifiedUsersAfterSevenDays() {
+
+  admin.firestore().collection("newlyCreatedUsers")
+  .where("isUserverrified", "==" , false)
+  .where("accountDeletionDate", "<=", Date.now())
+  .get().then((snapshot) => {
+    
+    snapshot.forEach(async (element) => {
+      const data = element.data();
+      try {
+        await admin.auth().deleteUser(data.uid);
+        await admin.firestore().collection("newlyCreatedUsers").delete(element.id);
+        console.log('Successfully deleted user');
+      } catch (error) {
+        console.error('Error deleting user:', error);
+      }
+    });
+  });
+}
 
 //Triggered when isWholeSaler becomes true in Users is created
 exports.userUpdated = functions.firestore
@@ -589,6 +1016,338 @@ app.post("/sendEmail", async (req, res) => {
 
 
 
+app.post("/sendSignUpOTP", async (req, res) => {
+  if (req.body.to == null || req.body.otp == null || req.body.username == null) {
+    res.json({ msg: "to and otp required", status: "failure" });
+  } else {
+
+    OTP = req.body.otp;
+    let testAccount = await nodemailer.createTestAccount();
+
+    var emailTemplate = '<html xmlns="http://www.w3.org/1999/xhtml">'
+    +'<head>'
+    +'<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />'
+    +'<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">'
+    +'<title>Many thanks for your registration</title>'
+    +'<style type="text/css">'
+    
+    +'@font-face {'
+    +'font-family: \'Icons Technology Template\';'
+    +'src: url(\'https://assets.website-files.com/635006df15081fdeda1bbe4f/635006df15081f62be1bbeed_icons-technology-template.woff2\')format(\'woff2\');'
+    +'font-weight: 400;'
+    +'font-style: normal;'
+    +'font-display: swap;'
+    +'}'
+    +'@font-face {'
+    +'font-family: \'Plus Jakarta Display\';'
+    +'src: url(\'https://assets.website-files.com/635006df15081fdeda1bbe4f/635006df15081f3e891bbeb1_PlusJakartaDisplay-Medium.otf\') format(\'opentype\');'
+    +'font-weight: 500;'
+    +'font-style: normal;'
+    +'font-display: swap;'
+    +'}'
+    +'@font-face {'
+    +'font-family: \'Plus Jakarta Display\';'
+    +'src: url(\'https://assets.website-files.com/635006df15081fdeda1bbe4f/635006df15081f50301bbecf_PlusJakartaDisplay-Regular.otf\') format(\'opentype\');'
+    +'font-weight: 400;'
+    +'font-style: normal;'
+    +'font-display: swap;'
+    +'}'
+    
+    
+    +'.preheader { display:none !important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; }'
+    +'.column {padding-bottom: 20px;}'
+    
+    +'@font-face {'
+    +'font-family: \'Open Sans\', Arial, Helvetica, sans-serif;'
+    +'font-style: normal;'
+    +'font-weight: 400;'
+    +'}'
+    
+    +'img {display:block;}'
+    
+    +'p,td, ul, li{'
+    +'font-family: \'Open Sans\', Arial, Helvetica, sans-serif;'
+    +'color:#00000; line-height: 1.3em; font-size:1.0em;  }'
+    
+    +'p.subtitle{'
+    +'font-family: \'Open Sans\', Arial, Helvetica, sans-serif;'
+    +'color:#a0a0a0; line-height: 1.15em; font-size:1.0em;  }'
+    
+    +'p.impressum{'
+    +'font-family: \'Open Sans\', Arial, Helvetica, sans-serif;'
+    +'color:#a0a0a0; font-weight:300; line-height: 1.2em; font-size:0.8em;  }'
+    
+    +'a{'
+    +'font-family: \'Open Sans\', Arial, Helvetica, sans-serif; font-weight:normal;   font-size:1em;   margin-top:20px; text-decoration:underline; color:#0144e4;}'
+    
+    +'a.weiterlesen{font-family: \'Open Sans\', Arial, Helvetica, sans-serif;    font-size:1.05em;     font-weight:bold;     text-decoration:underline;    color:#0144e4;   }'
+    
+    +'a.headline{font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  font-weight:bold;   line-height:1.2em;  text-decoration:none;  color:#0144e4;  font-size: 1.2em;  padding-bottom:1em; }'
+    
+    +'h1{  font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  font-weight:bold;   line-height:1.2em;  text-align:middle;  color:#000000;   font-size: 1.4em;}'
+    
+    +'h2{  font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  font-weight:bold;   font-size: 1.3em;  line-height:1.2em;  text-align:middle;  color:#0144e4;  }'
+    
+    +'h3{  font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  font-weight:bold;   line-height:1.3em;  text-align:middle;  color:#0144e4;   font-size: 1.3em;}'
+    
+    +'hr {border-top: 1px;color: #e7e7e7;}'
+    
+    +'tr.grey{background-color: #f2f2f2;border: 1px;border-color: #000000; }'
+    
+    +'a.link {  font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  font-size: 0.9em;   font-weight: normal;  color:#0144e4;  line-height: 1.1;   text-decoration: none;   }'
+    
+    
+    +'a.link:hover { text-decoration: underline;   }'
+    
+    
+    +'a.button-a {  font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  background: #0144e4;   border: 15px solid #0144e4;   font-size: 1em;   font-weight: bold;  color:#FFFFFF;  line-height: 1.1;   text-align: center;   text-decoration: none;   display: block; border-radius: 3px;  }'
+    
+    
+    +'a.button-a:hover {  font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  font-size: 1em;   font-weight: bold;  color:#0144e4;   background: #2E9AFE !important;  border-color: #2E9AFE !important;  }'
+    
+    +'a.button-b {  font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  background: #cccccc;   border: 15px solid #cccccc;   font-size: 1em;   font-weight: bold;  color:#FFFFFF;  line-height: 0.9;   text-align: center;   text-decoration: none;   display: block; border-radius: 3px; }'
+    
+    
+    +'a.button-b:hover {  font-family: \'Open Sans\', Arial, Helvetica, sans-serif;  font-family:arial,verdana,helvetica;  font-size: 0.95em;   font-weight: bold;  color:#FFFFFF;     background: #999999 !important; border-color: #999999 !important;}'
+      
+    +'@media only screen and (max-width: 640px) {'
+    +'.deviceWidth {'
+    +'padding: 0;'
+    +' }'
+
+    +'.center {text-align: center!important;width: 100%;}'
+    +'}'
+    
+    +'@media only screen and (max-width: 479px) {'
+    +'.deviceWidth {'
+    +'width: 280px!important;'
+    +'padding: 0;'
+    +'}'
+    +'}'
+    
+        +'</style>'
+        +'</head>'
+        +'<body style="margin-top:10px;" bgcolor="#F8F8F8" leftmargin="0" topmargin="100px" marginwidth="0" marginheight="0">'
+        +'<span class="preheader" style="display: none !important; visibility: hidden; opacity: 0; color: transparent; height: 0; width: 0;"> '
+        +'Please confirm your identity</span>'
+        +'<table style="width: 100%;" cellspacing="0" cellpadding="0" border="0" bgcolor="#F8F8F8">'
+        +'<tbody>'
+        +'<tr>'
+        +'<td align="center">'
+    
+        +'<table class="deviceWidth" style="width: 600px;" cellspacing="0" cellpadding="0" border="0" bgcolor="#F8F8F8">'
+        +' <tbody>'
+        +'<tr>'
+        +'<td colspan="2">'
+        +'<table style="width: 100%;">'
+        +'<tbody>'
+        +'<tr>'
+        +'<td height="20px" colspan="4">'
+        +'&nbsp;'
+        +'</td>'
+        +'</tr>'
+    
+        +'<tr>'
+        +'<td style="Padding-left:5px; padding-right:20px;" width="100px" align="left">'
+        +'<a href="https://www.tellz.me" target="_blank">'
+        +'<img class="deviceWidth " style="width: 100px!important;"'
+        +'src="https://firebasestorage.googleapis.com/v0/b/tmpage-4a311.appspot.com/o/1-user_documents%2Fezgif.com-gif-maker.png?alt=media&token=d399ee57-f417-4e76-b3cb-ee30bb8b301b"/>'
+        +'</a>'			
+        +'</td>'
+        +'<td width="450px" colspan="3">'
+        +'</td>'
+                  
+        +'</tr>'
+
+        +'<tr>'
+        +'<td height="40px" colspan="4">'
+        +'&nbsp;'
+        +'</td>'
+        +'</tr>'
+ 
+        +'<tr>'
+        +'<td colspan="2"style="padding-left: 20px; padding-right: 20px;background: #F8F8F8F8;" width="300px">'
+        +'<a href="https://www.tellz.me" target="_blank">' 
+                    
+        +'<img class="deviceWidth " style="width: 180px!important;"' 
+        +'src="https://firebasestorage.googleapis.com/v0/b/tmpage-4a311.appspot.com/o/1-user_documents%2Fezgif.com-gif-maker%20(1).png?alt=media&token=b762fe43-fbce-481b-9157-b81c734d3718 alt="tellz.me® International GmbH" border="0" />'
+    
+        +'</a> <br />'
+        +'</td>'
+        +'<td style="padding-left: 20px; padding-right: 20px;" colspan="2"width="150px"align="right">'
+        +'<a class="link" href="https://www.tellz.me" target="_blank">' 
+        +'<b>EN<br />USER<br />MAIL'
+        +'</b>'
+        +'</a>'
+        +'</td>'
+                  
+                  
+        +'</tr>'
+
+        +'<tr>'
+        +'<td height="20px" colspan="4">'
+        +'&nbsp;'
+        +'</td>'
+        +'</tr>'
+    
+        +'<tr>'
+        +'<td colspan="4" style="padding-left: 20px; padding-right: 20px;">'
+        +'<h1>'
+        +'<br />'
+        +'Please confirm your account'
+        +'</h1>'
+                    
+        +'<p class="subtitle">'
+        +'We connect the world: online meets offline.'
+        +'</p>'
+        +'</td>'
+        +'<td>'
+        +'&nbsp;'
+        +'</td>'
+        +'</tr>'
+        +'<tr>'
+        +'<td colspan="4">'
+        +'<hr />'
+        +'</td>'
+        +'</tr>'
+    
+        +'</tbody>'
+        +'</table>'
+        +'</td>'
+        +'</tr>'
+    
+        +'<tr>'
+        +'<td colspan="2" style="padding: 20px;">'
+        +'<table class="deviceWidth" style="width: 100%;" cellspacing="0" cellpadding="0" border="0" align="left">'
+        +'<tbody>'
+        +'<tr>'
+        +'<td>'
+              
+        +'<p>Hello '+req.body.username+','
+        +'<br /><br />'
+        +'Nice that you have chosen tellz.me&#174;. <br /><br />'
+        +'<b>How to confirm your account:</b><br />'
+        +'Please open the app on your mobile phone now and enter these four digits on the start page: '
+        +'</p>'
+                  
+        +'<h2 class="center">' 
+        + req.body.otp +'</h2>'
+                  
+        +'<p> If you do not confirm the account, it will be automatically deleted in<br />7 days.'
+        +'<br /><br /><a href="https://intercom.help/tellzme/de/" target="_blank">Find out here</a> what the app does and how to use it.'
+                     
+        +'<br /><br />'
+        +'If you have not yet downloaded the app to your phone, use these links or go to the Apple Store or Google Play and enter "tellz.me PAGE" in the search.	<table>'
+        +'<br /><br />'
+        +'<tr>'
+        +'<td>'
+                  
+        +'<a href="https://play.google.com/store/apps/details?id=com.app.tmpage" target="_blank"> '
+        +'<img class="deviceWidth " style="width: 100%!important;" src="https://www.der-business-tipp.de/kampagnen/tellzme/google-app-store-icon-white.png" alt="GooglePlay Download" border="0" />'
+        +'</a><br />'
+        +'<a href="https://play.google.com/store/apps/details?id=com.app.tmpage" target="_blank">Download Android</a>'
+        +'</td>'
+        +'<td align="left">'
+        +'<a href="https://apps.apple.com/de/app/tellz-me-page/id1622993070" target="_blank">' 
+        +'<img class="deviceWidth " style="width: 100%!important;" src="https://www.der-business-tipp.de/kampagnen/tellzme/apple-app-store-icon-white.png" alt="AppleStore Download" border="0" />'
+        +'</a><br />'
+        +'<a href="https://apps.apple.com/de/app/tellz-me-page/id1622993070" target="_blank">Download IOS</a>' 
+                          
+        +'</td>'
+        +'</tr>'
+        +'</table><br /><br />'	
+        +'<table>'
+        +'<tr>'
+        +'<td width="350px">'
+        +' If you have any questions or suggestions for us,'
+        +'please feel free to send us an email.<br />'
+        +' </td>'
+        +'<td width="210px">'
+        +'<a href="https://www.tellz.me" target="_blank">' 
+        +'<img class="deviceWidth " style="width:190px!important;"' 
+        +'src="https://firebasestorage.googleapis.com/v0/b/tmpage-4a311.appspot.com/o/1-user_documents%2Fezgif.com-gif-maker%20(2).png?alt=media&token=978a6acd-0021-4e6e-942e-eaad08834fb2"' 
+        +'alt="Watch the video" border="0" />'
+        +'</a>'
+        +'</td>'
+        +'</tr>'
+        +'<tr>'
+        +'<td width="350px">'
+        +'<br />'
+        +'<br /><br />'
+        +'We hope you enjoy the app.<br /><br />'
+        +'Kind regards,<br />'
+        +'Your tellz.me&#174; service team <br />'
+        +'Email: <a href="mailto:support@tellz.me" target="_blank">support@tellz.me</a>'
+        +' </td>'
+        +' <td>'
+                    
+        +'<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="margin: auto">'
+        +'<tr>'
+        +'<td style="border-radius: 3px; background: #F8F8F8; text-align: center;" class="button-td">'
+        +'<a href="https://qr-code.page/" target="_blank" class="button-a">'
+        +'>>> Log in now &nbsp;&nbsp;'
+        +'</a>'
+        +'</td>'
+        +'</tr>'
+        +'</table>'
+        +'<br />'
+                    
+        +'</td>'
+        +'</tr>'
+        +'</table>'	                   
+        +'</p>'
+        +'</td>'
+        +'</tr>'
+        +'</tbody>'
+        +'</table>'
+        +'</td>'
+        +'</tr>'
+        +'<tr>'
+        +'<td style="Padding-left:20px; padding-right:20px;">'
+        +'<a href="https://tellz.me" target="_blank">'
+        +'<img class="deviceWidth " style="width: 100%!important;"' 
+        +'src="https://firebasestorage.googleapis.com/v0/b/tmpage-4a311.appspot.com/o/emailsystem%2F6373c1bbee36d363ad68493c_admin_de-p-3200%201.png?alt=media&token=17b3aa29-8e0a-4988-85b2-a066056e0c98" />'
+        +'</a>'			
+        +'</td>'
+        +'</tr>'   
+        +'<tr>'
+        +'<td colspan="2" style="padding: 20px;">'
+        +'<p class="impressum">'
+        +'© tellz.me® International GmbH, Hohe Strasse 19, 27374 Visselhövede, Germany,' 
+        +'VAT no. DE313991621, Trade register no. HRB 206853, Local court Walsrode, CEO:Timo Bösch,' 
+        +'Email:hello@tellz.me'
+        +'<br /><br />'
+        +'This message was sent to ##emfängeremail## and is intended for ##name##. tellz.me® sends you updates like this to let you know about' 
+        +'the latest posts on tellz.me®. You can unsubscribe from updates or remove your email' 
+        +'address if this is not your tellz.me® account. ##Unsubscribe here##.'
+        +'</p>'	
+        +'</td>'
+        +'</tr>'
+                  
+        +'</tbody>'
+        +'</table>'
+        +'</body>'
+        +'</html>'
+
+
+
+
+    intializeMailServeice();
+
+    // send mail with defined transport object
+    let info = await transporter.sendMail({
+      from: companyEmail_OTP, // sender address
+      to: req.body.to, // list of receivers
+      subject: "tellz.me® PAGE OTP", // Subject line
+      // text: "Hello world?", // plain text body
+
+      html: emailTemplate
+    });
+    res.json({ otp: OTP, message: info });
+  }
+});
+//////
+
 function sendWholesalerQualifiedEmail(wholesalerEmail, callback) {
   // create reusable transporter object using the default SMTP transport
   // let transporter = nodemailer.createTransport({
@@ -622,5 +1381,3 @@ function sendWholesalerQualifiedEmail(wholesalerEmail, callback) {
   });
 
 }
-
-
