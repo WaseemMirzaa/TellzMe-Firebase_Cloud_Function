@@ -7,11 +7,13 @@ const express = require("express");
 const app = express();
 const admin = require("firebase-admin");
 const uuid = require('uuid');
+const nodemailer = require("nodemailer");
 admin.initializeApp();
 
 const uAmount = 20;
 const isRedeemedFlag = false;
 const isApplicableFlag = false;
+let transporter = null;
 
 const Stripe = require("stripe");
 const stripe = Stripe(
@@ -809,8 +811,19 @@ function sendEmailAfterThreeDays() {
 
       html: emailTemplate
     });
-    res.json({ otp: OTP, message: info });
 
+    const querySnapshot = await admin.firestore().collection("newlyCreatedUsers")
+    .where("uid", "==", data.uid)
+    .limit(1)
+    .get();
+
+    const now = Date.now(); // current date and time in milliseconds
+    const threeDaysLater = new Date(now + (3 * 24 * 60 * 60 * 1000)).getTime();
+
+    if (!querySnapshot.empty) {
+       const docRef = querySnapshot.docs[0].ref;
+       await docRef.update({ resendVerificationEmailDate: threeDaysLater });
+    }
     });
   });
 }
@@ -916,9 +929,7 @@ var user = "otp@qr-code.page";
 var pass = "ommevmwxmkpsibqc";
 
 "use strict";
-const nodemailer = require("nodemailer");
 
-let transporter = null;
 
 function intializeMailServeice() {
   transporter = nodemailer.createTransport({
