@@ -832,7 +832,6 @@ function sendEmailAfterThreeDays() {
 function deleteUnVerifiedUsersAfterSevenDays() {
 
   admin.firestore().collection("newlyCreatedUsers")
-  .where("isUserverrified", "==" , false)
   .where("accountDeletionDate", "<=", Date.now())
   .get().then((snapshot) => {
     
@@ -840,7 +839,7 @@ function deleteUnVerifiedUsersAfterSevenDays() {
       const data = element.data();
       try {
         await admin.auth().deleteUser(data.uid);
-        await admin.firestore().collection("newlyCreatedUsers").delete(element.id);
+        await admin.firestore().collection("newlyCreatedUsers").doc(element.id).delete();
         console.log('Successfully deleted user');
       } catch (error) {
         console.error('Error deleting user:', error);
