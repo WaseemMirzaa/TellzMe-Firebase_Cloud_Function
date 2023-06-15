@@ -163,11 +163,9 @@ app.post("/sendFCM", async (req, res) => {
       if (element != "") {
         const payload = {
           token: element,
-          notification: {
+          data: {
             title: req.body.title,
             body: req.body.msg,
-          },
-          data: {
             link: req.body.data,
           },
         };
@@ -845,23 +843,34 @@ function sendEmailAfterThreeDays() {
 }
 
 
-function deleteUnVerifiedUsersAfterSevenDays() {
+async function deleteUnVerifiedUsersAfterSevenDays() {
 
-  admin.firestore().collection("newlyCreatedUsers")
+  const snapshot = await admin.firestore().collection("newlyCreatedUsers")
   .where("accountDeletionDate", "<=", Date.now())
-  .get().then((snapshot) => {
-    
-    snapshot.forEach(async (element) => {
-      const data = element.data();
-      try {
-        await admin.auth().deleteUser(data.uid);
-        await admin.firestore().collection("newlyCreatedUsers").doc(element.id).delete();
-        console.log('Successfully deleted user');
-      } catch (error) {
-        console.error('Error deleting user:', error);
-      }
-    });
-  });
+  .get();
+  //.then((snapshot) => {
+    // snapshot.forEach(async (element) => {
+    //   const data = element.data();
+    //   try {
+    //     await admin.auth().deleteUser(data.uid);
+    //     await admin.firestore().collection("newlyCreatedUsers").doc(element.id).delete();
+    //     console.log('Successfully deleted user');
+    //   } catch (error) {
+    //     console.error('Error deleting user:', error);
+    //   }
+    // });
+  //});
+
+  for (const element of snapshot.docs) {
+    const data = element.data();
+    try {
+      await admin.auth().deleteUser(data.uid);
+      await admin.firestore().collection("newlyCreatedUsers").doc(element.id).delete();
+      console.log('Successfully deleted user');
+    } catch (error) {
+      console.error('Error deleting user:', error);
+    }
+  };
 }
 
 //Triggered when isWholeSaler becomes true in Users is created
